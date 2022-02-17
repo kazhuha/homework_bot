@@ -2,13 +2,12 @@ import logging
 import os
 import sys
 import time
+from http import HTTPStatus
+from json.decoder import JSONDecodeError
 
 import requests
 import telegram
-from json.decoder import JSONDecodeError
 from dotenv import load_dotenv
-from http import HTTPStatus
-
 
 load_dotenv()
 
