@@ -5,16 +5,16 @@ import time
 
 import requests
 import telegram
+from json.decoder import JSONDecodeError
 from dotenv import load_dotenv
-# from exceptions import MyError
-import exceptions
+from http import HTTPStatus
+
 
 load_dotenv()
 
-
 PRACTICUM_TOKEN = os.getenv('PRAKTIKUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
-TELEGRAM_CHAT_ID = 250956699
+TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
 RETRY_TIME = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
@@ -47,7 +47,7 @@ def send_message(bot, message):
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
         logger.info(f'Сообщение "{message}" отправлено')
-    except Exception as error:
+    except telegram.TelegramError as error:
         logger.error(
             f'Сообщение "{message}" не отправлено по причине: "{error}"'
         )
@@ -59,26 +59,34 @@ def get_api_answer(current_timestamp):
     params = {'from_date': timestamp}
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=params)
-    except Exception:
-        logger.error('Эндпоинт недоступен')
-        raise exceptions.MyError('Эндпоинт недоступен')
-    if response.status_code != 200:
+    except requests.RequestException as error:
+        logger.error(f'Эндпоинт недоступен по причине: {error}')
+        raise requests.RequestException(
+            f'Эндпоинт недоступен по причине: {error}'
+        )
+    if response.status_code != HTTPStatus.OK.value:
         logger.error('Код ответа сервера не соответствует ожидаемому')
-        raise ValueError('Код ответа сервера не соответствует ожидаемому')
-    return response.json()
+        raise requests.exceptions.HTTPError(
+            f'Код ответа сервера {response.status_code}'
+        )
+    try:
+        return response.json()
+    except JSONDecodeError as error:
+        logger.error(f'Ответ не преобразовался в json: {error}')
+        raise JSONDecodeError(f'Ответ не преобразовался в json: {error}')
 
 
 def check_response(response):
     """Проверяет ответ API на корректность."""
     key = 'homeworks'
-    if type(response) != dict:
+    if type(response) is not dict:
         logger.error('Некотректный формат ответа от API')
         raise TypeError(f'{type(response)} не соответстует "dict"')
     if key not in response:
         logger.error(f'Ключ "{key}" отсутствует в ответе API')
         raise KeyError(f'Ключ "{key}" отсутствует в ответе API')
     homework = response.get(key)
-    if type(homework) != list:
+    if type(homework) is not list:
         logger.error('Домашки приходят не в виде списка')
         raise TypeError('Домашки приходят не в виде списка')
     return homework
@@ -87,6 +95,9 @@ def check_response(response):
 def parse_status(homework):
     """Извлекает стаус работы из ответа."""
     homework_name = homework.get('homework_name')
+    if homework_name is None:
+        logger.error('Отсутствует название домашней работы')
+        raise KeyError('Отсутствует название домашней работы')
     homework_status = homework.get('status')
     if homework_status not in HOMEWORK_STATUSES:
         logger.error(f'Статуc "{homework_status}" недокументирован')
@@ -102,13 +113,14 @@ def check_tokens():
     if PRACTICUM_TOKEN and TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
         return True
     else:
-        logger.critical('Проблема с токенами!')
-        SystemExit
+        return False
 
 
 def main():
     """Основная логика работы бота."""
-    check_tokens()
+    if not check_tokens():
+        logger.critical('Ошибка токена')
+        raise SystemExit
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
     logger.info('Бот запущен')

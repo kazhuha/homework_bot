@@ -1,5 +1,5 @@
-class MyError(Exception):
-    """Ошибка недоступности эндпоинта."""
+class MyDescriptionOfError(Exception):
+    """Собственное описание ошибки."""
 
     def __init__(self, text):
         """Переопределяем текст ошибки."""
