@@ -1,4 +1,4 @@
-class MyDescriptionOfError(Exception):
+class DescriptionOfError(Exception):
     """Собственное описание ошибки."""
 
     def __init__(self, text):

@@ -94,7 +94,7 @@ def check_response(response):
 def parse_status(homework):
     """Извлекает стаус работы из ответа."""
     homework_name = homework.get('homework_name')
-    if homework_name is None:
+    if not homework_name:
         logger.error('Отсутствует название домашней работы')
         raise KeyError('Отсутствует название домашней работы')
     homework_status = homework.get('status')
