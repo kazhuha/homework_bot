@@ -1,2 +1,7 @@
 # homework_bot
-python telegram bot
+Telegram бот-ассистент. Обращается к API сервису Практикум.Домашка и узнаёт статус домашней домашней работы.
+
+### Технологии
+* python-telegram-bot==13.7
+
+
